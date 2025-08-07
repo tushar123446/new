@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Image Object Match</title>
+</head>
+<body>
+    <h2>🖼️ Upload Image to Database</h2>
+    <form method="POST" enctype="multipart/form-data" action="/upload/">
+        {% csrf_token %}
+        <input type="file" name="image" required>
+        <input type="text" name="tags" placeholder="Tags (optional)">
+        <button type="submit">Upload</button>
+    </form>
+
+    <hr>
+
+    <h2>📷 Show Object to Camera</h2>
+    <video id="camera" width="320" height="240" autoplay></video>
+    <br>
+    <button onclick="capture()">Check Object</button>
+    <p id="result"></p>
+    <img id="matched" src="" width="200" style="display:none;">
+
+    <script>
+        const video = document.getElementById('camera');
+        navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+            video.srcObject = stream;
+        });
+
+        function capture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 320;
+            canvas.height = 240;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataURL = canvas.toDataURL('image/jpeg');
+
+            fetch('/match-object/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({image: dataURL})
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById("result").innerText = "✅ Match Found!";
+                    document.getElementById("matched").src = data.image_url;
+                    document.getElementById("matched").style.display = "block";
+                } else {
+                    document.getElementById("result").innerText = "❌ " + data.error;
+                }
+            });
+        }
+    </script>
+</body>
+</html>

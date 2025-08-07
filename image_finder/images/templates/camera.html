@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Object Recognition System</title>
+    <style>
+        body { text-align: center; font-family: Arial, sans-serif;  background-color:#e9f3fb ; }
+        video { width: 60%; border: 2px solid black; }
+        button { padding: 10px 20px; margin: 10px; background: blue; color: white; border: none; cursor: pointer; }
+        button:hover { background: darkblue; }
+        img { max-width: 50%; margin-top: 20px; border: 2px solid green; }
+    </style>
+</head>
+<body>
+    <h2>Show an Object to the Camera</h2>
+    
+    <video id="video" autoplay></video>  
+    <br>
+    <button onclick="captureImage()">Detect Object</button>
+    
+    <canvas id="canvas" style="display: none;"></canvas>
+
+    <h3>Matching Image:</h3>
+    <img id="resultImage" src="" alt="Detected Image Will Appear Here">
+
+    <script>
+        const video = document.getElementById('video');
+        async function startCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+        } catch (error) {
+            alert("⚠️ Error accessing the webcam: " + error.message);
+        }
+    }
+        
+        // Start the webcam
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => { video.srcObject = stream; })
+            .catch(err => console.error("Error accessing webcam: ", err));
+
+        function captureImage() {
+            let canvas = document.getElementById('canvas');
+            let ctx = canvas.getContext('2d');
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            let imageData = canvas.toDataURL('image/jpeg');  // Convert to Base64
+
+            fetch('/match-object/', {  // Send to Django
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+                body: JSON.stringify({ image: imageData })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('resultImage').src = data.image_url;
+                } else {
+                    alert("No match found!");
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        function getCSRFToken() {
+            return document.cookie.split('; ')
+                .find(row => row.startsWith('csrftoken='))
+                ?.split('=')[1];
+        }
+        window.onload = startCamera;
+        
+    </script>
+   
+    
+    
+</body>
+</html>
